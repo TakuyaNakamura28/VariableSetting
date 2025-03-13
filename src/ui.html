@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VariableSetting</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+      background-color: #fafafa;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .header h1 {
+      font-size: 20px;
+      margin: 0 0 4px 0;
+      color: #2563EB;
+    }
+    
+    .header p {
+      font-size: 14px;
+      margin: 0;
+      color: #64748b;
+    }
+    
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    h2 {
+      font-size: 16px;
+      margin: 0 0 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    h2 svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .color-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    input[type="color"] {
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    
+    input[type="text"] {
+      flex-grow: 1;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    
+    button {
+      background-color: #3B82F6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      background-color: #2563EB;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    }
+    
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+    
+    button.secondary {
+      background-color: #f1f5f9;
+      color: #334155;
+    }
+    
+    button.secondary:hover {
+      background-color: #e2e8f0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    button.danger {
+      background-color: #ef4444;
+      color: white;
+    }
+    
+    button.danger:hover {
+      background-color: #dc2626;
+      box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);
+    }
+    
+    button svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+      opacity: 0.7;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    
+    .swatch {
+      width: 100%;
+      height: 48px;
+      border-radius: 6px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .swatch:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .swatch-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: white;
+      text-shadow: 0 0 3px rgba(0,0,0,0.5);
+    }
+    
+    .swatch-light .swatch-name {
+      color: #333;
+      text-shadow: none;
+    }
+    
+    .divider {
+      border-top: 1px solid #e2e8f0;
+      margin: 16px 0;
+    }
+    
+    .toggle-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .toggle-btn {
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 12px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .toggle-btn.active {
+      background-color: #3B82F6;
+      color: white;
+      border-color: #3B82F6;
+    }
+    
+    .result-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      background-color: #f8fafc;
+      border-left: 4px solid #10b981;
+    }
+    
+    .result-card.error {
+      border-left-color: #ef4444;
+      background-color: #fef2f2;
+    }
+    
+    .result-card h3 {
+      margin: 0;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .result-card p {
+      margin: 0;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .log-area {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #f1f5f9;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    
+    .log-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .log-title h3 {
+      font-size: 14px;
+      margin: 0;
+    }
+    
+    .log-title svg {
+      transition: transform 0.3s;
+    }
+    
+    .log-title.collapsed svg {
+      transform: rotate(-90deg);
+    }
+    
+    .log-content {
+      margin-top: 8px;
+      transition: max-height 0.3s, opacity 0.3s;
+      max-height: 150px;
+      opacity: 1;
+      overflow-y: auto;
+    }
+    
+    .log-content.collapsed {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-top: 12px;
+      margin-bottom: 8px;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background-color: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .advanced-options {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .advanced-options-title {
+      font-size: 14px;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>VariableSetting</h1>
+      <p>Shadcn UI・Tailwind互換の階層型デザインシステム変数を生成</p>
+    </div>
+    
+    <div class="card">
+      <h2>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        Step 1: プライマリカラーを選択
+      </h2>
+      <div class="color-picker">
+        <div class="input-group">
+          <input type="color" id="color-picker" value="#3B82F6">
+          <input type="text" id="color-hex" value="#3B82F6" placeholder="HEXカラーコード">
+        </div>
+      </div>
+    </div>
+    
+    <div id="palette-section" class="card" style="display: none;">
+      <h2>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+        Step 2: カラーパレットを確認
+      </h2>
+      
+      <div class="toggle-buttons">
+        <button class="toggle-btn active" id="light-mode-btn">ライトモード</button>
+        <button class="toggle-btn" id="dark-mode-btn">ダークモード</button>
+      </div>
+      
+      <div class="swatches" id="swatches-container">
+        <!-- スウォッチはここに動的に生成されます -->
+      </div>
+      
+      <div class="advanced-options">
+        <div class="advanced-options-title" id="advanced-options-toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          詳細オプション
+        </div>
+        
+        <div id="advanced-options-content" class="hidden">
+          <div class="checkbox-group">
+            <input type="checkbox" id="clear-existing" name="clear-existing">
+            <label for="clear-existing">既存の変数を削除して新規作成（既存の変数を上書きせずにクリア）</label>
+          </div>
+          
+          <button id="clear-variables-btn" class="danger" style="margin-top: 12px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+            すべての変数を削除
+          </button>
+        </div>
+      </div>
+      
+      <div class="button-group" style="margin-top: 20px;">
+        <button id="create-variables-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"/><path d="M5 12h14"/><path d="M5 17h14"/></svg>
+          Figma変数を生成
+        </button>
+      </div>
+    </div>
+    
+    <div id="result-section" style="display: none;">
+      <!-- 結果がここに表示されます -->
+    </div>
+    
+    <div id="export-section" class="card" style="display: none;">
+      <h2>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        Step 3: データをエクスポート
+      </h2>
+      
+      <p>階層構造（プリミティブ→セマンティック→コンポーネント）の変数システムを生成します。</p>
+      
+      <div class="button-group">
+        <button id="export-css-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+          CSS変数を生成
+        </button>
+        <button id="export-tailwind-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+          Tailwind設定を生成
+        </button>
+      </div>
+      
+      <div id="export-result" style="display: none;" class="result-card">
+        <h3>Export Result</h3>
+        <textarea id="export-content" style="width: 100%; height: 200px; font-family: monospace; margin-top: 8px; padding: 8px;"></textarea>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="log-title" id="log-title">
+        <h3>ログ</h3>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="log-content" id="log-content">
+        <div id="log-area">イベントログを表示します...</div>
+      </div>
+    </div>
+    
+    <div class="button-group">
+      <button id="generate-btn" class="secondary">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.2 14.9A6 6 0 0 0 16 9v-2a4.1 4.1 0 0 0-4-4 4.1 4.1 0 0 0-4 4v2a6 6 0 0 0-1.2 5.9"/><path d="M12 18v4"/><path d="M8 18h8"/></svg>
+        パレットを生成
+      </button>
+      <button id="cancel-btn" class="secondary">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        キャンセル
+      </button>
+    </div>
+  </div>
+  
+  <!-- 削除確認モーダル -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 class="modal-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+        すべての変数を削除
+      </h3>
+      <p>この操作はすべてのデザインシステム変数を削除します。この操作は元に戻せません。よろしいですか？</p>
+      <div class="modal-buttons">
+        <button id="modal-cancel" class="secondary">キャンセル</button>
+        <button id="modal-confirm" class="danger">削除する</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // ログ表示用関数
+    function log(message) {
+      const logArea = document.getElementById('log-area');
+      const timestamp = new Date().toLocaleTimeString();
+      logArea.textContent += `\n[${timestamp}] ${message}`;
+      logArea.scrollTop = logArea.scrollHeight;
+      console.log(message);
+    }
+    
+    // UI要素
+    const colorPicker = document.getElementById('color-picker');
+    const colorHexInput = document.getElementById('color-hex');
+    const generateBtn = document.getElementById('generate-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const paletteSection = document.getElementById('palette-section');
+    const swatchesContainer = document.getElementById('swatches-container');
+    const createVariablesBtn = document.getElementById('create-variables-btn');
+    const resultSection = document.getElementById('result-section');
+    const lightModeBtn = document.getElementById('light-mode-btn');
+    const darkModeBtn = document.getElementById('dark-mode-btn');
+    const logTitle = document.getElementById('log-title');
+    const logContent = document.getElementById('log-content');
+    const exportCssBtn = document.getElementById('export-css-btn');
+    const exportTailwindBtn = document.getElementById('export-tailwind-btn');
+    const exportSection = document.getElementById('export-section');
+    const exportResult = document.getElementById('export-result');
+    const exportContent = document.getElementById('export-content');
+    const clearExistingCheckbox = document.getElementById('clear-existing');
+    const clearVariablesBtn = document.getElementById('clear-variables-btn');
+    const advancedOptionsToggle = document.getElementById('advanced-options-toggle');
+    const advancedOptionsContent = document.getElementById('advanced-options-content');
+    const confirmModal = document.getElementById('confirm-modal');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    
+    // 状態管理
+    let palette = {};
+    let darkPalette = {};
+    let currentMode = 'light';
+    
+    // 詳細オプションの表示切り替え
+    advancedOptionsToggle.addEventListener('click', () => {
+      advancedOptionsContent.classList.toggle('hidden');
+    });
+    
+    // 削除確認モーダル
+    clearVariablesBtn.addEventListener('click', () => {
+      confirmModal.classList.remove('hidden');
+    });
+    
+    modalCancel.addEventListener('click', () => {
+      confirmModal.classList.add('hidden');
+    });
+    
+    modalConfirm.addEventListener('click', () => {
+      confirmModal.classList.add('hidden');
+      
+      log('変数クリアリクエスト');
+      
+      // Figmaにメッセージを送信
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'clear-variables'
+        } 
+      }, '*');
+    });
+    
+    // ログの折り畳み切り替え
+    logTitle.addEventListener('click', () => {
+      logTitle.classList.toggle('collapsed');
+      logContent.classList.toggle('collapsed');
+    });
+    
+    // 初期化ログ
+    log('UI初期化完了');
+    
+    // ライト/ダークモードの切り替え
+    lightModeBtn.addEventListener('click', () => {
+      if (currentMode !== 'light') {
+        currentMode = 'light';
+        lightModeBtn.classList.add('active');
+        darkModeBtn.classList.remove('active');
+        renderSwatches(palette);
+        log('ライトモードに切り替え');
+      }
+    });
+    
+    darkModeBtn.addEventListener('click', () => {
+      if (currentMode !== 'dark') {
+        currentMode = 'dark';
+        darkModeBtn.classList.add('active');
+        lightModeBtn.classList.remove('active');
+        renderSwatches(darkPalette);
+        log('ダークモードに切り替え');
+      }
+    });
+    
+    // カラーピッカーの変更をHEX入力に反映
+    colorPicker.addEventListener('input', (e) => {
+      colorHexInput.value = e.target.value.toUpperCase();
+      log(`カラー選択: ${e.target.value.toUpperCase()}`);
+    });
+    
+    // HEX入力の変更をカラーピッカーに反映
+    colorHexInput.addEventListener('input', (e) => {
+      const hexColor = e.target.value;
+      if (/^#[0-9A-Fa-f]{6}$/.test(hexColor)) {
+        colorPicker.value = hexColor;
+        log(`HEX入力: ${hexColor.toUpperCase()}`);
+      }
+    });
+    
+    // パレット生成ボタンのクリックハンドラ
+    generateBtn.addEventListener('click', () => {
+      const color = colorHexInput.value.toUpperCase();
+      log(`パレット生成リクエスト: ${color}`);
+      resultSection.style.display = 'none'; // 結果を非表示
+      
+      // Figmaにメッセージを送信
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'generate-palette', 
+          color: color 
+        } 
+      }, '*');
+    });
+    
+    // 変数生成ボタンのクリックハンドラ
+    createVariablesBtn.addEventListener('click', () => {
+      const color = colorHexInput.value.toUpperCase();
+      const clearExisting = clearExistingCheckbox.checked;
+      
+      log(`Figma変数生成リクエスト: ${color}（既存変数をクリア: ${clearExisting ? 'はい' : 'いいえ'}）`);
+      
+      // ボタンを無効化してスピナー表示
+      createVariablesBtn.disabled = true;
+      createVariablesBtn.innerHTML = '<span class="spinner"></span> 生成中...';
+      
+      // 結果表示を初期化
+      resultSection.innerHTML = `
+        <div class="result-card">
+          <h3>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M20 8.5V5l-3.5 3.5"/><path d="M20 16.5V20l-3.5-3.5"/><path d="M4 16.5V20l3.5-3.5"/><path d="M4 8.5V5l3.5 3.5"/></svg>
+            デザインシステム変数を生成中...
+          </h3>
+          <p>しばらくお待ちください。この処理には数秒かかる場合があります。</p>
+        </div>
+      `;
+      resultSection.style.display = 'block';
+      
+      // Figmaにメッセージを送信
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'create-variables', 
+          color: color,
+          clearExisting: clearExisting
+        } 
+      }, '*');
+    });
+    
+    // キャンセルボタンのクリックハンドラ
+    cancelBtn.addEventListener('click', () => {
+      log('キャンセルボタンクリック');
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'cancel' 
+        } 
+      }, '*');
+    });
+    
+    // ライトモード用のダークパレット生成
+    function generateDarkPalette(lightPalette) {
+      // 簡易的なダークモードパレット生成
+      // 実際のダークモードカラーはサーバー側で生成されます
+      const dark = {};
+      
+      // シンプルに反転（実際にはもっと洗練されたアルゴリズムが必要）
+      dark[50] = lightPalette[900];
+      dark[100] = lightPalette[800];
+      dark[200] = lightPalette[700];
+      dark[300] = lightPalette[600];
+      dark[400] = lightPalette[500];
+      dark[500] = lightPalette[400];
+      dark[600] = lightPalette[300];
+      dark[700] = lightPalette[200];
+      dark[800] = lightPalette[100];
+      dark[900] = lightPalette[50];
+      if (lightPalette[950]) dark[950] = lightPalette[50];
+      
+      return dark;
+    }
+    
+    // Figmaからのメッセージ受信
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+      
+      log(`メッセージ受信: ${msg.type}`);
+      
+      if (msg.type === 'palette-result') {
+        // パレットデータを受信したらスウォッチを表示
+        palette = msg.palette;
+        darkPalette = generateDarkPalette(palette);
+        renderSwatches(currentMode === 'light' ? palette : darkPalette);
+        paletteSection.style.display = 'block';
+      }
+      else if (msg.type === 'variables-creating') {
+        log('変数生成開始');
+      }
+      else if (msg.type === 'variables-created') {
+        log(`変数生成結果: ${msg.success ? '成功' : '失敗'}`);
+        
+        // ボタンを元に戻す
+        createVariablesBtn.disabled = false;
+        createVariablesBtn.innerHTML = `
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"/><path d="M5 12h14"/><path d="M5 17h14"/></svg>
+          Figma変数を生成
+        `;
+        
+        // 結果表示
+        if (msg.success) {
+          resultSection.innerHTML = `
+            <div class="result-card">
+              <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                変数生成成功
+              </h3>
+              <p>Figmaにデザインシステム変数が正常に生成されました。Figmaの「変数」パネルで確認できます。</p>
+            </div>
+          `;
+          
+          // エクスポートセクションを表示
+          exportSection.style.display = 'block';
+        } else {
+          resultSection.innerHTML = `
+            <div class="result-card error">
+              <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                変数生成エラー
+              </h3>
+              <p>エラーが発生しました: ${msg.message}</p>
+            </div>
+          `;
+        }
+      }
+      else if (msg.type === 'variables-cleared') {
+        log('変数クリア完了');
+        
+        resultSection.innerHTML = `
+          <div class="result-card">
+            <h3>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              変数クリア成功
+            </h3>
+            <p>すべてのデザインシステム変数が削除されました。</p>
+          </div>
+        `;
+        resultSection.style.display = 'block';
+      }
+      else if (msg.type === 'css-generated') {
+        log('CSS変数生成成功');
+        
+        // エクスポート結果を表示
+        exportResult.style.display = 'block';
+        exportContent.value = msg.css;
+        exportContent.select();
+      }
+      else if (msg.type === 'tailwind-generated') {
+        log('Tailwind設定生成成功');
+        
+        // エクスポート結果を表示
+        exportResult.style.display = 'block';
+        exportContent.value = msg.config;
+        exportContent.select();
+      }
+      else if (msg.type === 'plugin-loaded') {
+        log(`プラグインステータス: ${msg.message}`);
+      }
+    };
+    
+    // パレットスウォッチを表示する関数
+    function renderSwatches(palette) {
+      log(`パレットをレンダリング: ${currentMode}モード`);
+      swatchesContainer.innerHTML = '';
+      
+      // パレットの各カラーに対してスウォッチを作成
+      const shades = Object.keys(palette).sort((a, b) => parseInt(a) - parseInt(b));
+      
+      for (const shade of shades) {
+        const color = palette[shade];
+        const swatch = document.createElement('div');
+        swatch.className = 'swatch';
+        swatch.style.backgroundColor = color;
+        
+        // 明るい色の場合はテキストも暗く
+        const isLight = shade <= 300;
+        if (isLight) swatch.classList.add('swatch-light');
+        
+        const swatchName = document.createElement('div');
+        swatchName.className = 'swatch-name';
+        swatchName.textContent = `${shade}`;
+        
+        const colorInfo = document.createElement('div');
+        colorInfo.className = 'swatch-name';
+        colorInfo.textContent = color;
+        colorInfo.style.fontSize = '9px';
+        colorInfo.style.marginTop = '3px';
+        
+        swatch.appendChild(swatchName);
+        swatch.appendChild(colorInfo);
+        swatchesContainer.appendChild(swatch);
+      }
+    }
+    
+    // エクスポート機能のイベントハンドラ
+    exportCssBtn.addEventListener('click', () => {
+      log('CSS変数エクスポートリクエスト');
+      
+      // 結果表示初期化
+      exportResult.style.display = 'none';
+      exportContent.value = '読み込み中...';
+      
+      // Figmaにメッセージを送信
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'export-css'
+        } 
+      }, '*');
+    });
+    
+    exportTailwindBtn.addEventListener('click', () => {
+      log('Tailwind設定エクスポートリクエスト');
+      
+      // 結果表示初期化
+      exportResult.style.display = 'none';
+      exportContent.value = '読み込み中...';
+      
+      // Figmaにメッセージを送信
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'export-tailwind'
+        } 
+      }, '*');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "VariableSetting",
+  "id": "variable-setting",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  },
+  "documentAccess": "document",
+  "menu": [
+    {
+      "name": "VariableSetting",
+      "command": "open-plugin"
+    }
+  ]
+}

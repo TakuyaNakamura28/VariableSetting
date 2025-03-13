@@ -1,0 +1,37 @@
+{
+  "name": "variable-setting",
+  "version": "0.1.0",
+  "description": "Figmaプラグイン：Tailwind CSSとShadcn UIに基づくデザインシステムを数クリックで生成",
+  "main": "dist/code.js",
+  "scripts": {
+    "build": "vite build && node build-ui.js",
+    "dev": "vite build --watch & node build-ui.js",
+    "watch": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint 'src/**/*.{js,ts}'",
+    "format": "prettier --write 'src/**/*.{js,ts,html,css}'",
+    "init:dev": "pnpm install && pnpm lint && pnpm typecheck"
+  },
+  "keywords": [
+    "figma",
+    "plugin",
+    "tailwind",
+    "shadcn",
+    "design-system"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.72.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vite-plugin-singlefile": "^0.13.5",
+    "vitest": "^1.0.4"
+  }
+}
