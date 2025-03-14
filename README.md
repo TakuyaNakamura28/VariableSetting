@@ -2,124 +2,116 @@
 
 VariableSetting は、Tailwind CSS と Shadcn UI に基づくデザインシステムを数クリックで生成できる Figma プラグインの開発プロジェクトです。プライマリカラーを選択するだけで、一貫性のあるカラーパレットを素早く構築できることを目指しています。
 
-## 実装予定の機能
+## 実装済みの機能
 
-- **シンプルなカラー選択**: プライマリカラーからの完全なカラーシステム生成
-- **カラースウォッチ生成**: 選択したプライマリカラーから自動的にTailwind CSSスタイルのカラーパレットを生成
-- **Figma 変数**: デザインシステム変数を自動的に構築
-- **コンポーネント**: Tailwind/Shadcn UI に準拠したコンポーネント
-- **開発者エクスポート**: Tailwind 設定ファイルとして出力
+1. **階層的変数システム**: プリミティブ変数→セマンティック変数→コンポーネント変数の3階層構造
+2. **カラーシステム生成**: プライマリカラーからの完全なカラーシステム生成
+3. **変数コレクション管理**: CollectionManagerによる変数コレクションの適切な管理
+4. **Figma変数生成**: 設計に基づいた変数の自動生成および管理
+5. **Light/Darkモード対応**: モード切替に対応した変数値設定
+6. **デザインシステムサービス**: デザインシステム変数の統合的管理
+
+## 今後実装予定の機能
+
+1. **コンポーネント生成**: Tailwind/Shadcn UIに準拠したコンポーネント自動生成
+2. **開発者エクスポート**: Tailwind設定ファイルとCSSカスタムプロパティ出力の強化
+3. **UIの改善**: より直感的なユーザーインターフェース
+4. **プリセット機能**: ユーザー設定の保存と再利用
+5. **詳細カスタマイズ**: 高度なパレット調整オプション
 
 ## 技術スタック
 
-- **TypeScript**: バックエンド（Figma側）コード
-- **バニラHTML/CSS/JS**: シンプルなUIインターフェース
-- **Vite**: ビルドツール
-- **pnpm**: パッケージマネージャー
+1. **TypeScript**: すべてのコアロジックとFigma側コード
+2. **HTML/CSS/JavaScript**: UIインターフェース
+3. **Vite**: モジュールバンドラーとビルドツール
+4. **pnpm**: パッケージマネージャー
+5. **ESLint/Prettier**: コード品質管理
 
-## 開発のセットアップ
+## プロジェクト構造
 
-### プロジェクト開始方法
+```bash
+variable-setting/
+├── src/
+│   ├── code.ts                     # Figma側のエントリーポイント
+│   ├── ui.html/ui.js               # プラグインUI
+│   ├── services/                   # サービスクラス
+│   │   ├── CollectionManager.ts    # 変数コレクション管理
+│   │   ├── DesignSystemService.ts  # デザインシステム変数生成
+│   │   ├── MessageHandlerService.ts# メッセージング処理
+│   │   ├── variables/              # 変数生成クラス群
+│   │   │   ├── BaseVariableCreator.ts
+│   │   │   ├── ColorVariableCreator.ts
+│   │   │   ├── NumberVariableCreator.ts
+│   │   │   ├── ShadowVariableCreator.ts
+│   │   │   └── VariableCreatorFacade.ts
+│   │   └── ...
+│   ├── types/                      # 型定義
+│   └── utils/                      # ユーティリティ
+│       ├── colorUtils.ts           # カラー処理
+│       ├── semanticUtils.ts        # セマンティック変数
+│       └── tokensUtils.ts          # トークン生成
+├── public/                         # 静的アセット
+├── tests/                          # テストファイル
+├── dist/                           # ビルド成果物
+└── ...
+```
 
-1. このリポジトリをクローンします
-   ```
-   git clone https://github.com/yourusername/variable-setting.git
-   cd variable-setting
-   ```
+## 開発環境のセットアップ
 
-2. 依存関係をインストールします
-   ```
-   pnpm install
-   ```
+1. リポジトリのクローン
 
-3. 開発環境を設定します
-   ```
-   pnpm init:dev
-   ```
+```bash
+git clone https://github.com/yourusername/variable-setting.git
+cd variable-setting
+```
 
-4. プラグインを最初にビルドします
-   ```
-   pnpm build
-   ```
+1. 依存関係のインストールと初期セットアップ
 
-### Figmaでの開発テスト
+```bash
+pnpm install
+pnpm init:dev
+```
+
+1. 開発ビルド
+
+```bash
+pnpm dev
+```
+
+1. 本番ビルド
+
+```bash
+pnpm build
+```
+
+## 開発コマンド
+
+- **開発ビルド（監視モード）**: `pnpm dev`
+- **型チェック**: `pnpm typecheck`
+- **リント**: `pnpm lint`
+- **フォーマット**: `pnpm format`
+- **テスト**: `pnpm test`
+
+## Figmaでの開発テスト
 
 1. Figma で、「プラグイン」→「開発」→「新しい開発プラグインを作成する」を選択
 2. 「マニフェストから既存のプラグインを使用」を選択
 3. プロジェクトフォルダ内の `manifest.json` ファイルを選択
 
-## プロジェクト構造
-
-```
-variable-setting/
-├── src/
-│   ├── code.ts        # Figma側のメインコード
-│   ├── ui.html        # プラグインUI
-│   ├── utils/         # ユーティリティ関数（カラー生成など）
-│   ├── services/      # Figmaサービスクラス
-│   └── types/         # TypeScript型定義
-├── public/            # 静的アセット
-├── tests/             # テストファイル
-├── manifest.json      # Figmaプラグイン設定
-└── ...
-```
-
-### 開発コマンド
-
-- 初期セットアップ: `pnpm init:dev`
-- ビルド: `pnpm build`
-- 型チェック: `pnpm typecheck`
-- テスト実行: `pnpm test`
-- リント実行: `pnpm lint`
-- フォーマット: `pnpm format`
-- 継続的ビルド: `pnpm figma:watch`
-
 ## 開発ロードマップ
 
-1. **フェーズ1**: 開発環境のセットアップと基盤構築
-   - プロジェクト構造の確立
-   - 開発環境の整備
-   - 基本的なCI/CD設定
+当プロジェクトは現在フェーズ3の実装中で、変数システムの構築に注力しています。次のステップはコンポーネント生成機能の実装です。詳細は `DEV_PLAN.md` を参照してください。
 
-2. **フェーズ2**: 基本的なカラーパレット生成機能
-   - プライマリカラーからのパレット生成
-   - 視覚的なカラースウォッチ
-   - カラー選択UI
+## 貢献ガイドライン
 
-3. **フェーズ3**: Figma変数とモード対応
-   - 変数コレクションの自動生成
-   - Light/Darkモード対応
-   - 変数プレビュー
-
-4. **フェーズ4**: コンポーネント生成
-   - 基本コンポーネント（ボタン、カードなど）
-   - コンポーネントプレビュー
-   - アクセシビリティチェック
-
-5. **フェーズ5以降**: 拡張機能と洗練
-   - 追加コンポーネント
-   - Tailwind設定ファイルのエクスポート
-   - ユーザー設定の保存と拡張オプション
-
-## 貢献方法
-
-プロジェクトへの貢献を歓迎します。以下のガイドラインを参照してください：
-
-1. このリポジトリをフォークします
-2. 機能ブランチを作成します (`git checkout -b feature/amazing-feature`)
-3. 変更をコミットします (`git commit -m 'feat: add some amazing feature'`)
-4. ブランチにプッシュします (`git push origin feature/amazing-feature`)
-5. Pull Requestを作成します
+- SOLID原則に従ったコード設計
+- 各ファイルは最大200行に収める
+- Conventional Commitsに従ったコミットメッセージ
+- PRを作成する前にローカルでテストを実行
 
 ## ライセンス
 
-このプロジェクトは MIT ライセンスの下で公開されています。詳細については [LICENSE](LICENSE) ファイルをご覧ください。
-
-## クレジット
-
-- このプラグインは [Tailwind CSS](https://tailwindcss.com/) と [Shadcn UI](https://ui.shadcn.com/) のデザインシステムに基づいて作成されています。
-- Figma Plugin API を使用して開発されています。
+このプロジェクトは MIT ライセンスの下で公開されています。
 
 ---
-
-プロジェクト開始日: 2025年3月12日
+最終更新: 2025年3月15日

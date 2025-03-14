@@ -12,6 +12,13 @@ export type RGB = {
   b: number; // 0-255
 };
 
+export type RGBA = {
+  r: number; // 0-1
+  g: number; // 0-1
+  b: number; // 0-1
+  a: number; // 0-1
+};
+
 export type HSL = {
   h: number; // 0-360
   s: number; // 0-100
@@ -50,6 +57,40 @@ export function rgbToHex(rgb: RGB): string {
   };
 
   return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
+}
+
+/**
+ * HEX カラーコードを RGBA オブジェクトに変換する
+ * @param {string} hex HEX カラーコード (例: #FF0000)
+ * @returns {RGBA} RGBA オブジェクト
+ */
+export function getRGBAFromHex(hex: string): RGBA {
+  // 特殊なカラー値の処理
+  if (hex === 'transparent') {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // #を除去
+  hex = hex.replace(/^#/, '');
+  
+  // 短縮形式の場合は拡張
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  
+  // アルファ値の処理 (8桁の場合)
+  let alpha = 1;
+  if (hex.length === 8) {
+    alpha = parseInt(hex.slice(6, 8), 16) / 255;
+    hex = hex.slice(0, 6);
+  }
+  
+  // 16進数を10進数に変換 (Figma API用に0-1の範囲に正規化)
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  
+  return { r, g, b, a: alpha };
 }
 
 /**
