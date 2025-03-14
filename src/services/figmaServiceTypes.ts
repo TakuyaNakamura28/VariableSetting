@@ -43,6 +43,19 @@ export interface ICollectionManager {
 }
 
 /**
+ * 変数サービスインターフェース
+ * 変数の作成、更新、参照管理等を担当
+ */
+export interface IVariableService {
+  createVariable(name: string, lightValue: string, darkValue: string, collectionType: CollectionType, group?: string): Variable | null;
+  setVariablePathName(variable: Variable, path: string): void;
+  setVariableReference(variable: Variable, refVariable: Variable, modeId: string): void;
+  isCircularReference(sourceName: string, targetName: string, collectionType: CollectionType): boolean;
+  hexToFigmaColor(hex: string): RGBA;
+  figmaColorToHex(color: RGBA): string;
+}
+
+/**
  * 変数作成インターフェース
  */
 export interface IVariableCreator {
