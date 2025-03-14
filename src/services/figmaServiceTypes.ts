@@ -43,16 +43,27 @@ export interface ICollectionManager {
 }
 
 /**
- * 変数サービスインターフェース
- * 変数の作成、更新、参照管理等を担当
+ * 色彩変換ユーティリティインターフェース
  */
-export interface IVariableService {
-  createVariable(name: string, lightValue: string, darkValue: string, collectionType: CollectionType, group?: string): Variable | null;
-  setVariablePathName(variable: Variable, path: string): void;
-  setVariableReference(variable: Variable, refVariable: Variable, modeId: string): void;
-  isCircularReference(sourceName: string, targetName: string, collectionType: CollectionType): boolean;
+export interface IColorUtility {
   hexToFigmaColor(hex: string): RGBA;
   figmaColorToHex(color: RGBA): string;
+  parseColor(colorStr: string): string; // 色文字列を標準フォーマットに変換
+  warn(message: string): void; // 警告ログを出力
+}
+
+/**
+ * シャドウ変換ユーティリティインターフェース
+ */
+export interface IShadowUtility {
+  parseShadowValue(shadowStr: string): EffectValue;
+}
+
+/**
+ * 数値変換ユーティリティインターフェース
+ */
+export interface INumberUtility {
+  parseNumberValue(value: string): number;
 }
 
 /**
@@ -71,7 +82,55 @@ export interface IVariableCreator {
  */
 export interface IVariableManagementService {
   initializeCollections(): Promise<boolean>;
+  clearAllVariables(): void;
   createColorVariable(name: string, lightValue: string, darkValue: string, collectionType: CollectionType, group?: string): Variable | null;
   createSemanticColors(colors: Record<string, string>, _baseOnLight?: boolean): Record<string, Variable | null>;
   createComponentColors(colors: Record<string, string>): Record<string, Variable | null>;
+}
+
+/**
+ * ロギングサービスインターフェース
+ */
+export interface ILoggerService {
+  log(message: string): void;
+  error(message: string, error?: unknown): void;
+  warn(message: string): void;
+  notify(message: string, options?: { error?: boolean }): void;
+}
+
+/**
+ * 変数サービス基本インターフェース
+ * 変数の作成、更新、参照管理等の基本機能を担当
+ */
+export interface IVariableService extends IColorUtility {
+  createVariable(name: string, lightValue: string, darkValue: string, collectionType: CollectionType, group?: string): Variable | null;
+  setVariablePathName(variable: Variable, path: string): void;
+  setVariableReference(variable: Variable, refVariable: Variable, modeId: string): void;
+  isCircularReference(sourceName: string, targetName: string, collectionType: CollectionType): boolean;
+}
+
+/**
+ * プリミティブ変数サービスインターフェース
+ */
+export interface IPrimitiveVariableService extends IVariableService, INumberUtility, IShadowUtility {
+  createColorVariable(name: string, lightValue: string, darkValue: string, collectionType: CollectionType, group?: string): Variable | null;
+  createPrimitiveColorPalette(name: string, palette: Record<string, string>): Record<string, Variable>;
+  createPrimitiveNumberTokens(tokenType: string, tokens: Record<string, string>): Record<string, Variable>;
+  createShadowVariables(lightShadows: Record<string, string>, darkShadows: Record<string, string>): Record<string, Variable>;
+}
+
+/**
+ * セマンティック変数サービスインターフェース
+ */
+export interface ISemanticVariableService {
+  createSemanticVariable(name: string, lightRefName: string, darkRefName: string, variableType: string): Variable | null;
+  createSemanticColors(lightColors: Record<string, Record<string, string>>, darkColors: Record<string, Record<string, string>>): Record<string, Variable>;
+}
+
+/**
+ * コンポーネント変数サービスインターフェース
+ */
+export interface IComponentVariableService {
+  createComponentVariable(name: string, semanticRefName: string, componentType: string): Variable | null;
+  createComponentColors(colors: Record<string, string>): Record<string, Variable>;
 }
