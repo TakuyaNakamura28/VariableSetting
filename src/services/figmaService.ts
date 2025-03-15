@@ -2,6 +2,7 @@
  * Figma APIとやり取りするためのサービスクラス
  */
 import { SemanticColors, ComponentColors, ColorPalette } from '../types';
+import { CollectionManagerService } from './CollectionManagerService';
 
 /**
  * 変数コレクションのモード（Light/Dark）
@@ -119,33 +120,18 @@ export class FigmaVariableService {
    * 既存の変数をキャッシュする (コレクションごと)
    */
   private static cacheExistingVariables(): void {
-    this.existingVariables.clear();
-    const variables = figma.variables.getLocalVariables();
-    
-    // すべてのコレクションの変数をキャッシュ
-    for (const collectionName of Object.values(this.COLLECTION_NAMES)) {
-      const collection = this.collections[collectionName];
-      if (!collection) continue;
-      
-      const collectionVars = variables.filter(v => 
-        v.variableCollectionId === collection.id
-      );
-      
-      collectionVars.forEach(variable => {
-        // コレクション名をプレフィックスに含めてキャッシュ
-        this.existingVariables.set(`${collectionName}:${variable.name}`, variable);
-      });
-    }
-    
-    console.log(`Cached ${this.existingVariables.size} existing variables`);
+    // CollectionManagerServiceのキャッシュメソッドを使用
+    const collectionManager = CollectionManagerService.getInstance();
+    collectionManager.cacheExistingVariables();
   }
   
   /**
    * 名前で変数を検索する (コレクション指定)
    */
   private static findVariableByName(name: string, collectionType: CollectionType): Variable | null {
-    const collectionName = this.COLLECTION_NAMES[collectionType];
-    return this.existingVariables.get(`${collectionName}:${name}`) || null;
+    // CollectionManagerServiceを使用して変数を検索
+    const collectionManager = CollectionManagerService.getInstance();
+    return collectionManager.findVariableByName(name, collectionType);
   }
   
   /**
@@ -156,38 +142,13 @@ export class FigmaVariableService {
     lightValue: RGBA,
     darkValue: RGBA
   ): void {
-    // 変数のコレクションIDを取得
-    const collectionId = variable.variableCollectionId;
+    // CollectionManagerServiceを使用して変数値を更新
+    const collectionManager = CollectionManagerService.getInstance();
+    const success = collectionManager.updateVariableValue(variable, lightValue, darkValue);
     
-    // コレクションを検索
-    let collectionName = '';
-    for (const [type, name] of Object.entries(this.COLLECTION_NAMES)) {
-      if (this.collections[name]?.id === collectionId) {
-        collectionName = name;
-        break;
-      }
+    if (!success) {
+      console.error(`Failed to update variable ${variable.name}`);
     }
-    
-    if (!collectionName) {
-      console.error(`Collection not found for variable ${variable.name}`);
-      return;
-    }
-    
-    const lightModeId = this.lightModeIds[collectionName];
-    const darkModeId = this.darkModeIds[collectionName];
-    
-    if (!lightModeId || !darkModeId) {
-      console.error(`Mode IDs not found for collection ${collectionName}`);
-      return;
-    }
-    
-    // ライトモードの値を設定
-    variable.setValueForMode(lightModeId, lightValue);
-    
-    // ダークモードの値を設定
-    variable.setValueForMode(darkModeId, darkValue);
-    
-    console.log(`Updated variable ${variable.name}`);
   }
   
   /**
@@ -200,67 +161,18 @@ export class FigmaVariableService {
     collectionType: CollectionType,
     group?: string
   ): Variable | null {
-    const collectionName = this.COLLECTION_NAMES[collectionType];
-    const collection = this.collections[collectionName];
-    const lightModeId = this.lightModeIds[collectionName];
-    const darkModeId = this.darkModeIds[collectionName];
-    
-    if (!collection || !lightModeId || !darkModeId) {
-      console.error(`Collection or modes not initialized for ${collectionName}`);
-      return null;
-    }
-    
-    // パスの構築
-    let path = collectionType.toLowerCase();
-    if (group) {
-      path = `${path}/${group}`;
-    }
-    
     try {
-      // 既存の変数を探す
-      let variable = this.findVariableByName(name, collectionType);
+      // CollectionManagerServiceのインスタンスを取得
+      const collectionManager = CollectionManagerService.getInstance();
       
-      // RGBAをFigma Color形式に変換
-      const lightColor = this.hexToFigmaColor(lightValue);
-      const darkColor = this.hexToFigmaColor(darkValue);
+      // CollectionManagerServiceのcreateColorVariableメソッドを使用
+      const variable = collectionManager.createColorVariable(name, lightValue, darkValue, collectionType);
       
-      if (variable) {
-        // 既存の変数を更新
-        console.log(`Variable ${name} already exists in ${collectionName}, updating values`);
-        
-        try {
-          // ライトモードの値を設定
-          variable.setValueForMode(lightModeId, lightColor);
-          
-          // ダークモードの値を設定
-          variable.setValueForMode(darkModeId, darkColor);
-        } catch (error) {
-          console.error(`Error updating variable ${name} values: ${error}`);
-        }
-      } else {
-        // 新しい変数を作成
-        console.log(`Creating new variable ${name} in ${collectionName}`);
-        try {
-          variable = figma.variables.createVariable(
-            name,
-            collection,
-            'COLOR',
-            { scopes: ['ALL_SCOPES'] }
-          );
-          
-          // 値を設定
-          variable.setValueForMode(lightModeId, lightColor);
-          variable.setValueForMode(darkModeId, darkColor);
-          
-          // パスを設定
-          this.setVariablePathName(variable, path);
-          
-          // キャッシュに追加
-          this.existingVariables.set(`${collectionName}:${name}`, variable);
-        } catch (error) {
-          console.error(`Error creating variable ${name}: ${error}`);
-          return null;
-        }
+      // 変数が正常に作成された場合
+      if (variable && group) {
+        // パスの構築（グループが指定されている場合）
+        const path = `${collectionType.toLowerCase()}/${group}`;
+        this.setVariablePathName(variable, path);
       }
       
       return variable;
@@ -440,7 +352,7 @@ export class FigmaVariableService {
         return variable;
       }
       
-      // 循環参照を防ぐ - 同名や既知の循環参照の場合
+      // 循環参照を防ぐ - 同名変数へのセルフ参照を避ける
       if (lightRefName === name || this.isCircularReference(name, lightRefName, CollectionType.Semantic)) {
         console.log(`Preventing circular reference: ${name} -> ${lightRefName}, finding appropriate primitive instead`);
         
@@ -1060,17 +972,14 @@ export class FigmaVariableService {
         const colorVar = primitiveVars.find(v => v.name === colorVarName);
         if (colorVar) {
           try {
-            const variableId = colorVar.id;
-            if (variableId) {
-              variable.setValueForMode(modeId, {
-                type: 'VARIABLE_ALIAS',
-                id: variableId
-              });
-              console.log(`Set reference to color series: ${colorVar.name}`);
-              return;
-            }
-          } catch (refError) {
-            console.error(`Failed to create alias for color series ${colorVar.name}: ${refError}`);
+            variable.setValueForMode(modeId, {
+              type: 'VARIABLE_ALIAS',
+              id: colorVar.id
+            });
+            console.log(`Set reference to color series: ${colorVar.name}`);
+            return;
+          } catch (error) {
+            console.error(`Failed to set color series reference: ${error}`);
           }
         }
       }
@@ -1087,17 +996,14 @@ export class FigmaVariableService {
         const grayVar = primitiveVars.find(v => v.name === grayVarName);
         if (grayVar) {
           try {
-            const variableId = grayVar.id;
-            if (variableId) {
-              variable.setValueForMode(modeId, {
-                type: 'VARIABLE_ALIAS',
-                id: variableId
-              });
-              console.log(`Set reference to gray scale: ${grayVar.name}`);
-              return;
-            }
-          } catch (refError) {
-            console.error(`Failed to create alias for gray scale ${grayVar.name}: ${refError}`);
+            variable.setValueForMode(modeId, {
+              type: 'VARIABLE_ALIAS',
+              id: grayVar.id
+            });
+            console.log(`Set reference to gray scale: ${grayVar.name}`);
+            return;
+          } catch (error) {
+            console.error(`Failed to set gray scale reference: ${error}`);
           }
         }
       }
@@ -1125,7 +1031,7 @@ export class FigmaVariableService {
             return;
           }
         } catch (refError) {
-          console.error(`Failed to create alias for guessed primitive ${guessedVar.name}: ${refError}`);
+          console.error(`Failed to set guessed primitive reference: ${refError}`);
         }
       }
       
@@ -1192,7 +1098,7 @@ export class FigmaVariableService {
         const [componentType, propertyName] = name.split('-');
         console.log(`Component type: ${componentType}, Property: ${propertyName}`);
         
-        // まずプロパティに基づいて探す（例: background, foreground, ring, border）
+        // まずプロパティに基づいて探す（例：background, foreground, ring, border）
         // これは異なるタイプのコンポーネントでも共通の特性
         const baseSemanticVar = semanticVars.find(v => v.name === propertyName);
         if (baseSemanticVar) {
@@ -1423,17 +1329,17 @@ export class FigmaVariableService {
       if (valueOrRef === variable.name || valueOrRef.includes(variable.name)) {
         console.warn(`Detected potential circular reference for ${variable.name} -> ${valueOrRef}, using fallback`);
         // コンテキストに応じたフォールバック色
-        if (variable.name.includes('-background')) {
-          // 背景のフォールバック
-          variable.setValueForMode(modeId, { r: 1, g: 1, b: 1, a: 0 }); // 透明な背景
-        } else if (variable.name.includes('-border')) {
+        if (variable.name.includes('-border') || valueOrRef === 'border' || valueOrRef.includes('border')) {
           // ボーダーのフォールバック
           variable.setValueForMode(modeId, { r: 0, g: 0, b: 0, a: 0.1 }); // 半透明ボーダー
+        } else if (variable.name.includes('-background') || valueOrRef.includes('background')) {
+          // 背景のフォールバック
+          variable.setValueForMode(modeId, { r: 1, g: 1, b: 1, a: 0 }); // 透明な背景
         } else {
           // その他のフォールバック
           const fallbackColor = modeId.includes('Light') ? 
-            this.hexToFigmaColor('#111111') : 
-            this.hexToFigmaColor('#f5f5f5');
+            this.hexToFigmaColor('#111111') : // ライトモードのフォールバック: 黒
+            this.hexToFigmaColor('#f5f5f5');  // ダークモードのフォールバック: 白
           variable.setValueForMode(modeId, fallbackColor);
         }
         return;
@@ -1798,7 +1704,7 @@ export class FigmaVariableService {
       // この段階では直接色値は設定せず、必ずセマンティック変数への参照を使用する
       
       if (variable.name.includes('-border') || valueOrRef === 'border' || valueOrRef.includes('border')) {
-        // ボーダー関連のフォールバック
+        // ボーダーのフォールバック
         const borderVar = semanticVars.find(v => v.name === 'border');
         if (borderVar) {
           try {

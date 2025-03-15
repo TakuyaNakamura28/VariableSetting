@@ -2,7 +2,7 @@
  * 変数管理サービス
  * リファクタリング中の橋渡し役として機能
  */
-import { CollectionManager } from './CollectionManager';
+import { CollectionManagerService } from './CollectionManagerService';
 import { CollectionType } from './figmaServiceTypes';
 import { VariableCreatorFacade } from './variables/VariableCreatorFacade';
 
@@ -10,11 +10,11 @@ import { VariableCreatorFacade } from './variables/VariableCreatorFacade';
  * 変数管理サービス
  */
 export class VariableManagementService {
-  private collectionManager: CollectionManager;
+  private collectionManager: CollectionManagerService;
   private variableCreator: VariableCreatorFacade;
   
   constructor() {
-    this.collectionManager = new CollectionManager();
+    this.collectionManager = CollectionManagerService.getInstance();
     this.variableCreator = new VariableCreatorFacade(this.collectionManager);
   }
   

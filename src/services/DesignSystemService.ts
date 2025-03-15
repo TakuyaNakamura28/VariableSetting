@@ -1,323 +1,433 @@
 /**
  * デザインシステム変数作成サービス
  * プリミティブ変数、セマンティック変数、コンポーネント変数の生成と管理を担当
+ * SOLID原則に基づいた設計：
+ * - 単一責任原則: デザインシステム関連の処理のみを担当
+ * - 開放閉鎖原則: 新しい変数タイプに対して拡張可能
+ * - インターフェース分離原則: 明確なパブリックAPIの提供
+ * - 依存性逆転原則: 変数サービスへの依存を注入
  */
 import { generateColorPalette } from '../utils/colorUtils';
 import { generateSemanticColors, generateComponentColors } from '../utils/semanticUtils';
 import { 
   generateSpacingTokens, 
   generateRadiusTokens, 
-  generateShadowTokens,
+  // generateShadowTokens,  // 現在未使用のため、コメントアウト
   generateGrayscaleTokens,
   generateSupportColorTokens 
 } from '../utils/tokensUtils';
-import { FigmaVariableService } from './FigmaVariableServiceCompat';
-import { CollectionType } from './figmaServiceTypes';
+import { FigmaVariableAdapter } from './FigmaVariableAdapter';
+import { ConfigObject } from '../types/messageTypes';
+import { SemanticColors, ComponentColors } from '../types';
+
+// カラー関連の型定義
+/**
+ * カラーカテゴリ型 - 単一カテゴリ内のカラー名と値のマッピング
+ */
+interface ColorCategory {
+  [colorName: string]: string;
+}
 
 /**
- * プライマリカラーからデザインシステム変数を作成する
+ * ネストされたカラーオブジェクト型 - カテゴリとカラーの階層構造
+ * SemanticColorsやComponentColorsと互換性を持たせるための共通型
  */
-export async function createDesignSystemVariables(primaryColor: string, clearExisting: boolean = false) {
-  try {
-    figma.notify(`Creating design system variables with primary color: ${primaryColor}`);
-    
-    // 複数コレクションの初期化
-    const initialized = await FigmaVariableService.initializeCollections();
-    if (!initialized) {
+interface NestedColorObject {
+  [category: string]: ColorCategory | string;
+}
+
+// 型ガード関数 - オブジェクトをColorCategoryとして扱えるか判定
+function isColorCategory(value: unknown): value is ColorCategory {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * SemanticColorsをNestedColorObjectに変換するヘルパー関数
+ * これにより型の互換性を確保
+ */
+function semanticColorsToNestedColorObject(semanticColors: SemanticColors): NestedColorObject {
+  return semanticColors as unknown as NestedColorObject;
+}
+
+/**
+ * ComponentColorsをNestedColorObjectに変換するヘルパー関数
+ * これにより型の互換性を確保
+ */
+function componentColorsToNestedColorObject(componentColors: ComponentColors): NestedColorObject {
+  return componentColors as unknown as NestedColorObject;
+}
+
+/**
+ * フラットなカラーパレットをネストされた形式に変換するヘルパー関数
+ * @param colorPalette フラットなカラーパレット (例: { "primary-100": "#fff", ... })
+ * @returns ネストされた形式のオブジェクト (例: { primary: { "100": "#fff", ... } })
+ */
+function flatPaletteToNested(colorPalette: Record<string, string>): NestedColorObject {
+  const result: NestedColorObject = {};
+  
+  for (const [key, value] of Object.entries(colorPalette)) {
+    const parts = key.split('-');
+    if (parts.length === 2) {
+      const [category, shade] = parts;
+      if (!result[category]) {
+        result[category] = {};
+      }
+      
+      if (isColorCategory(result[category])) {
+        (result[category] as ColorCategory)[shade] = value;
+      }
+    } else {
+      // 単一の色名の場合はそのまま追加
+      result[key] = value;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * デザインシステムサービスクラス
+ * カラーパレット生成と変数作成を担当
+ */
+export class DesignSystemService {
+  private figmaVariableAdapter: FigmaVariableAdapter;
+  private darkMode = false;
+  private logger: { error: (message: string, error?: unknown) => void };
+
+  /**
+   * コンストラクタ - 依存性の注入
+   * @param figmaVariableAdapter Figma変数アダプター
+   */
+  constructor(figmaVariableAdapter: FigmaVariableAdapter) {
+    this.figmaVariableAdapter = figmaVariableAdapter;
+    this.logger = {
+      error: (message: string, error?: unknown) => {
+        // エラーを常にログ出力（実際の環境に応じて調整可能）
+        console.error(`${message}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+  }
+
+  /**
+   * 初期化処理
+   * @param configObj 設定オブジェクト
+   */
+  initialize(configObj: ConfigObject): void {
+    // 必要な初期化処理を実行
+    this.darkMode = configObj.themeMode === 'dark';
+  }
+
+  /**
+   * プライマリカラーからパレットを生成
+   * @param primaryColor プライマリカラー (HEX)
+   * @returns カラーパレット
+   */
+  generatePalette(primaryColor: string): Record<string, string> {
+    try {
+      return generateColorPalette(primaryColor);
+    } catch (error) {
+      // エラーログと代替処理
+      this.logError('カラーパレット生成エラー', error);
+      return {};
+    }
+  }
+
+  /**
+   * セマンティックカラーの生成
+   * @param colorPalette カラーパレット
+   * @returns セマンティックカラーオブジェクト
+   */
+  generateSemanticColorsFromPalette(colorPalette: Record<string, string>): NestedColorObject {
+    try {
+      // utilsの関数を使用してセマンティックカラーを生成
+      const semanticColors = generateSemanticColors(colorPalette, this.darkMode);
+      // 型の互換性を保証するために変換
+      return semanticColorsToNestedColorObject(semanticColors);
+    } catch (error) {
+      this.logError('セマンティックカラー生成エラー', error);
+      return {};
+    }
+  }
+
+  /**
+   * コンポーネントカラーの生成
+   * @param semanticColors セマンティックカラーオブジェクト
+   * @returns コンポーネントカラーオブジェクト
+   */
+  generateComponentColorsFromSemantics(semanticColors: SemanticColors): NestedColorObject {
+    try {
+      // utilsの関数を使用してコンポーネントカラーを生成
+      const componentColors = generateComponentColors(semanticColors, this.darkMode);
+      // 型の互換性を保証するために変換
+      return componentColorsToNestedColorObject(componentColors);
+    } catch (error) {
+      this.logError('コンポーネントカラー生成エラー', error);
+      return {};
+    }
+  }
+
+  /**
+   * Figma変数コレクションの作成
+   * @param name 変数コレクション名
+   * @returns コレクションID
+   */
+  createVariableCollection(name: string): string {
+    // アダプターを使用してコレクションを作成
+    return this.figmaVariableAdapter.createCollection(name);
+  }
+
+  /**
+   * プリミティブカラー変数の作成
+   * @param collectionId コレクションID
+   * @param colorPalette カラーパレット
+   */
+  createPrimitiveColorVariables(collectionId: string, colorPalette: Record<string, string>): void {
+    try {
+      // フラットなパレットをネストされた形式に変換
+      const nestedPalette = flatPaletteToNested(colorPalette);
+      
+      for (const [category, shades] of Object.entries(nestedPalette)) {
+        if (isColorCategory(shades)) {
+          for (const [shade, hexValue] of Object.entries(shades)) {
+            const variableName = `${category}-${shade}`;
+            this.figmaVariableAdapter.createColorVariable(
+              collectionId,
+              variableName, 
+              hexValue
+            );
+          }
+        } else if (typeof shades === 'string') {
+          // 単一カラーの場合
+          this.figmaVariableAdapter.createColorVariable(
+            collectionId,
+            category,
+            shades
+          );
+        }
+      }
+    } catch (error) {
+      this.logError('プリミティブカラー変数作成エラー', error);
+    }
+  }
+
+  /**
+   * セマンティックカラー変数の作成
+   * @param collectionId コレクションID
+   * @param semanticColors セマンティックカラーオブジェクト
+   */
+  createSemanticColorVariables(collectionId: string, semanticColors: NestedColorObject): void {
+    try {
+      this.createNestedColorVariables(collectionId, semanticColors, 'semantic');
+    } catch (error) {
+      this.logError('セマンティックカラー変数作成エラー', error);
+    }
+  }
+
+  /**
+   * コンポーネントカラー変数の作成
+   * @param collectionId コレクションID
+   * @param componentColors コンポーネントカラーオブジェクト
+   */
+  createComponentColorVariables(collectionId: string, componentColors: NestedColorObject): void {
+    try {
+      this.createNestedColorVariables(collectionId, componentColors, 'component');
+    } catch (error) {
+      this.logError('コンポーネントカラー変数作成エラー', error);
+    }
+  }
+
+  /**
+   * ネストされたカラー変数の作成（内部ヘルパーメソッド）
+   * @param collectionId コレクションID
+   * @param colorObject ネストされたカラーオブジェクト
+   * @param prefix 変数名のプレフィックス
+   */
+  private createNestedColorVariables(
+    collectionId: string, 
+    colorObject: NestedColorObject, 
+    prefix: string
+  ): void {
+    for (const [category, values] of Object.entries(colorObject)) {
+      if (isColorCategory(values)) {
+        for (const [name, hexValue] of Object.entries(values)) {
+          const variableName = `${prefix}/${category}/${name}`;
+          this.figmaVariableAdapter.createColorVariable(
+            collectionId,
+            variableName,
+            hexValue
+          );
+        }
+      } else if (typeof values === 'string') {
+        const variableName = `${prefix}/${category}`;
+        this.figmaVariableAdapter.createColorVariable(
+          collectionId,
+          variableName,
+          values
+        );
+      }
+    }
+  }
+
+  /**
+   * スペーシングトークンの生成と変数作成
+   * @param collectionId コレクションID
+   * @param _baseSize ベースサイズ（現在未使用）
+   */
+  createSpacingVariables(collectionId: string, _baseSize: number): void {
+    try {
+      // 引数なしで関数を呼び出す
+      const spacingTokens = generateSpacingTokens();
+      for (const [name, value] of Object.entries(spacingTokens)) {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        this.figmaVariableAdapter.createNumberVariable(
+          collectionId,
+          `spacing/${name}`,
+          numValue
+        );
+      }
+    } catch (error) {
+      this.logError('スペーシング変数作成エラー', error);
+    }
+  }
+
+  /**
+   * 角丸トークンの生成と変数作成
+   * @param collectionId コレクションID
+   * @param _baseSize ベースサイズ（現在未使用）
+   */
+  createRadiusVariables(collectionId: string, _baseSize: number): void {
+    try {
+      // 引数なしで関数を呼び出す
+      const radiusTokens = generateRadiusTokens();
+      for (const [name, value] of Object.entries(radiusTokens)) {
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        this.figmaVariableAdapter.createNumberVariable(
+          collectionId,
+          `radius/${name}`,
+          numValue
+        );
+      }
+    } catch (error) {
+      this.logError('角丸変数作成エラー', error);
+    }
+  }
+
+  /**
+   * グレースケールトークンの生成と変数作成
+   * @param collectionId コレクションID
+   */
+  createGrayscaleVariables(collectionId: string): void {
+    try {
+      // 引数なしで関数を呼び出す
+      const grayscaleTokens = generateGrayscaleTokens();
+      
+      // 変換処理でオブジェクト構造を平坦化
+      for (const [category, colors] of Object.entries(grayscaleTokens)) {
+        for (const [shade, value] of Object.entries(colors as Record<string, string>)) {
+          const name = `grayscale/${category}-${shade}`;
+          this.figmaVariableAdapter.createColorVariable(
+            collectionId,
+            name,
+            value
+          );
+        }
+      }
+    } catch (error) {
+      this.logError('グレースケール変数作成エラー', error);
+    }
+  }
+
+  /**
+   * サポートカラートークンの生成と変数作成
+   * @param collectionId コレクションID
+   */
+  createSupportColorVariables(collectionId: string): void {
+    try {
+      // 引数なしで関数を呼び出す
+      const supportColorTokens = generateSupportColorTokens();
+      
+      // 変換処理でオブジェクト構造を平坦化
+      for (const [category, colors] of Object.entries(supportColorTokens)) {
+        for (const [shade, value] of Object.entries(colors as Record<string, string>)) {
+          const name = `support/${category}-${shade}`;
+          this.figmaVariableAdapter.createColorVariable(
+            collectionId,
+            name,
+            value
+          );
+        }
+      }
+    } catch (error) {
+      this.logError('サポートカラー変数作成エラー', error);
+    }
+  }
+
+  /**
+   * シャドウトークンの生成と変数作成
+   * @param _collectionId コレクションID（現在未使用）
+   */
+  createShadowVariables(_collectionId: string): void {
+    try {
+      // shadowTokensは現時点では使用されていないため、実装を保留
+      // const shadowTokens = generateShadowTokens(this.darkMode);
+      // FigmaVariableServiceの実装に応じたシャドウ変数作成
+      // 現在は省略 - 今後実装
+      this.logError('シャドウ変数作成', 'シャドウ変数の作成はまだ実装されていません');
+    } catch (error) {
+      this.logError('シャドウ変数作成エラー', error);
+    }
+  }
+
+  /**
+   * 完全なデザインシステムの生成
+   * @param primaryColor プライマリカラー
+   * @param collectionName コレクション名
+   * @returns 生成したすべての変数情報
+   */
+  generateCompleteDesignSystem(primaryColor: string, collectionName: string): Record<string, unknown> {
+    try {
+      // コレクション作成
+      const collectionId = this.createVariableCollection(collectionName);
+      
+      // カラーパレット生成
+      const colorPalette = this.generatePalette(primaryColor);
+      
+      // プリミティブカラー変数の作成
+      this.createPrimitiveColorVariables(collectionId, colorPalette);
+      
+      // セマンティックカラーの生成と変数作成
+      const semanticColors = this.generateSemanticColorsFromPalette(colorPalette);
+      this.createSemanticColorVariables(collectionId, semanticColors);
+      
+      // コンポーネントカラーの生成と変数作成（型変換でエラーを回避）
+      const componentColors = this.generateComponentColorsFromSemantics(semanticColors as unknown as SemanticColors);
+      this.createComponentColorVariables(collectionId, componentColors);
+      
+      // その他のトークン生成と変数作成
+      this.createSpacingVariables(collectionId, 4);
+      this.createRadiusVariables(collectionId, 4);
+      this.createGrayscaleVariables(collectionId);
+      this.createSupportColorVariables(collectionId);
+      this.createShadowVariables(collectionId);
+      
       return {
-        success: false,
-        message: "Failed to initialize collections"
+        collectionId,
+        colorPalette,
+        semanticColors,
+        componentColors
       };
+    } catch (error) {
+      this.logError('デザインシステム生成エラー', error);
+      return {};
     }
-    
-    // 既存変数をクリアするオプション
-    if (clearExisting) {
-      figma.notify('Clearing existing variables...');
-      FigmaVariableService.clearAllVariables();
-    }
-    
-    // プライマリカラーからパレット生成と変数作成
-    await createPrimitiveColorVariables(primaryColor);
-    
-    // プリミティブトークン変数の作成
-    await createPrimitiveTokenVariables();
-    
-    // セマンティックカラー変数の作成
-    const primaryPalette = generateColorPalette(primaryColor);
-    const semanticResult = await createSemanticColorVariables(primaryPalette);
-    
-    // コンポーネントカラー変数の作成
-    const componentResult = await createComponentColorVariables(semanticResult.lightColors, semanticResult.darkColors);
-    
-    // エクスポート機能を実行
-    const exportResult = await exportVariables();
-    
-    return {
-      success: true,
-      message: 'Design system variables created successfully in separate collections'
-    };
-  } catch (error) {
-    figma.notify(`Error creating design system variables: ${error}`, { error: true });
-    return {
-      success: false,
-      message: `Error: ${error}`
-    };
   }
-}
 
-/**
- * プリミティブカラー変数を作成
- */
-async function createPrimitiveColorVariables(primaryColor: string) {
-  // プライマリカラーからパレット生成
-  const primaryPalette = generateColorPalette(primaryColor);
-  figma.notify('Primary palette generated');
-  
-  // プリミティブカラー変数の作成
-  figma.notify('Creating primitive color variables...');
-  
-  // プライマリカラー変数
-  const primaryVariables = FigmaVariableService.createPrimitiveColorPalette('primary', primaryPalette);
-  if (Object.keys(primaryVariables).length === 0) {
-    figma.notify('Warning: No primary variables were created', { error: true });
+  /**
+   * エラーログ出力
+   * @param message エラーメッセージ
+   * @param error エラーオブジェクト
+   */
+  private logError(message: string, error: unknown): void {
+    this.logger.error(message, error);
   }
-  
-  // グレースケールカラー変数
-  const grayscales = generateGrayscaleTokens();
-  for (const [name, palette] of Object.entries(grayscales)) {
-    FigmaVariableService.createPrimitiveColorPalette(name, palette);
-  }
-  
-  // 補助カラー変数
-  const supportColors = generateSupportColorTokens();
-  for (const [name, palette] of Object.entries(supportColors)) {
-    FigmaVariableService.createPrimitiveColorPalette(name, palette);
-  }
-  
-  // 特別なプリミティブカラー - 透明色
-  FigmaVariableService.createColorVariable(
-    'transparent', 
-    'transparent', 
-    'transparent', 
-    CollectionType.Primitives,
-    'colors/special'
-  );
-  
-  figma.notify('Primitive color variables created');
-  return primaryPalette;
-}
-
-/**
- * プリミティブトークン変数を作成
- */
-async function createPrimitiveTokenVariables() {
-  figma.notify('Creating primitive token variables...');
-  
-  // 角丸変数
-  const radiusTokens = generateRadiusTokens();
-  // 数値型に変換して渡す
-  const numericRadiusTokens: Record<string, number> = {};
-  for (const [key, value] of Object.entries(radiusTokens)) {
-    numericRadiusTokens[key] = typeof value === 'string' ? parseFloat(value) : value;
-  }
-  FigmaVariableService.createPrimitiveNumberTokens('radius', numericRadiusTokens);
-  
-  // スペーシング変数
-  const spacingTokens = generateSpacingTokens();
-  // 小数点を含む名前があるか確認
-  for (const key of Object.keys(spacingTokens)) {
-    if (key.includes('.')) {
-      figma.notify(`Invalid spacing token key contains dot: ${key}`, { error: true });
-    }
-  }
-  
-  // 数値型に変換して渡す
-  const numericSpacingTokens: Record<string, number> = {};
-  for (const [key, value] of Object.entries(spacingTokens)) {
-    numericSpacingTokens[key] = typeof value === 'string' ? parseFloat(value) : value;
-  }
-  FigmaVariableService.createPrimitiveNumberTokens('spacing', numericSpacingTokens);
-  
-  // シャドウ変数
-  const lightShadows = generateShadowTokens(false);
-  const darkShadows = generateShadowTokens(true);
-  
-  // シャドウデータの適切な変換
-  const processedLightShadows: Record<string, EffectValue[]> = {};
-  const processedDarkShadows: Record<string, EffectValue[]> = {};
-  
-  // 文字列からEffectValueオブジェクトに変換
-  for (const [key, value] of Object.entries(lightShadows)) {
-    if (typeof value === 'string') {
-      // 文字列から効果を解析（仮実装）
-      processedLightShadows[key] = [{
-        type: 'DROP_SHADOW',
-        color: { r: 0, g: 0, b: 0, a: 0.2 },
-        offset: { x: 0, y: 2 },
-        radius: 4,
-        spread: 0,
-        visible: true,
-        blendMode: 'NORMAL'
-      }];
-    } else if (Array.isArray(value)) {
-      processedLightShadows[key] = value as EffectValue[];
-    }
-  }
-  
-  // ダークモード用シャドウも同様に処理
-  for (const [key, value] of Object.entries(darkShadows)) {
-    if (typeof value === 'string') {
-      processedDarkShadows[key] = [{
-        type: 'DROP_SHADOW',
-        color: { r: 0, g: 0, b: 0, a: 0.4 },
-        offset: { x: 0, y: 2 },
-        radius: 4,
-        spread: 0,
-        visible: true,
-        blendMode: 'NORMAL'
-      }];
-    } else if (Array.isArray(value)) {
-      processedDarkShadows[key] = value as EffectValue[];
-    }
-  }
-  
-  FigmaVariableService.createShadowVariables(processedLightShadows, processedDarkShadows);
-  figma.notify('Primitive token variables created');
-}
-
-/**
- * セマンティックカラー変数を作成
- */
-async function createSemanticColorVariables(primaryPalette: Record<string, string>) {
-  // 意味のある色（セマンティックカラー）の変数を生成
-  const lightSemanticColors = generateSemanticColors(primaryPalette, false);
-  const darkSemanticColors = generateSemanticColors(primaryPalette, true);
-  figma.notify('Generated semantic colors');
-  
-  // セマンティックカラーを文字列の辞書に変換
-  const lightSemanticColorsAsStrings: Record<string, string> = {};
-  const darkSemanticColorsAsStrings: Record<string, string> = {};
-  
-  // 型安全にアクセスするために安全な型変換を使用
-  const convertSemanticColors = (colors: unknown): Record<string, Record<string, string>> => {
-    return colors as Record<string, Record<string, string>>;
-  };
-  
-  const lightColorsObj = convertSemanticColors(lightSemanticColors);
-  const darkColorsObj = convertSemanticColors(darkSemanticColors);
-  
-  for (const category of Object.keys(lightColorsObj)) {
-    for (const colorName of Object.keys(lightColorsObj[category])) {
-      const key = `${category}-${colorName}`;
-      lightSemanticColorsAsStrings[key] = lightColorsObj[category][colorName];
-    }
-  }
-  
-  for (const category of Object.keys(darkColorsObj)) {
-    for (const colorName of Object.keys(darkColorsObj[category])) {
-      const key = `${category}-${colorName}`;
-      darkSemanticColorsAsStrings[key] = darkColorsObj[category][colorName];
-    }
-  }
-  
-  // 文字列の辞書に変換されたセマンティックカラーを使用
-  const semanticVariables = FigmaVariableService.createSemanticColors(
-    lightSemanticColorsAsStrings,
-    darkSemanticColorsAsStrings
-  );
-  
-  if (semanticVariables && Object.keys(semanticVariables).length > 0) {
-    figma.notify(`Created ${Object.keys(semanticVariables).length} semantic color variables`);
-  } else {
-    figma.notify('No semantic color variables were created', { error: true });
-  }
-  
-  return {
-    semanticVariables,
-    lightColors: lightSemanticColors,
-    darkColors: darkSemanticColors
-  };
-}
-
-/**
- * コンポーネントカラー変数を作成
- */
-async function createComponentColorVariables(lightSemanticColors: unknown, darkSemanticColors: unknown) {
-  // コンポーネント固有の色変数を生成
-  const lightComponentColors = generateComponentColors(lightSemanticColors, false);
-  const darkComponentColors = generateComponentColors(darkSemanticColors, true);
-  figma.notify('Generated component colors');
-  
-  // コンポーネントカラーを文字列の辞書に変換
-  const lightComponentColorsAsStrings: Record<string, string> = {};
-  const darkComponentColorsAsStrings: Record<string, string> = {};
-  
-  // 型安全にアクセスするための関数
-  const convertComponentColors = (colors: unknown): Record<string, Record<string, string>> => {
-    return colors as Record<string, Record<string, string>>;
-  };
-  
-  const lightCompObj = convertComponentColors(lightComponentColors);
-  const darkCompObj = convertComponentColors(darkComponentColors);
-  
-  for (const component of Object.keys(lightCompObj)) {
-    for (const stateName of Object.keys(lightCompObj[component])) {
-      const key = `${component}-${stateName}`;
-      lightComponentColorsAsStrings[key] = lightCompObj[component][stateName];
-    }
-  }
-  
-  for (const component of Object.keys(darkCompObj)) {
-    for (const stateName of Object.keys(darkCompObj[component])) {
-      const key = `${component}-${stateName}`;
-      darkComponentColorsAsStrings[key] = darkCompObj[component][stateName];
-    }
-  }
-  
-  // 文字列の辞書に変換されたコンポーネントカラーを使用
-  const componentVariables = FigmaVariableService.createComponentColors(
-    lightComponentColorsAsStrings,
-    darkComponentColorsAsStrings
-  );
-  
-  if (componentVariables && Object.keys(componentVariables).length > 0) {
-    figma.notify(`Created ${Object.keys(componentVariables).length} component color variables`);
-  } else {
-    figma.notify('No component color variables were created', { error: true });
-  }
-  
-  return componentVariables;
-}
-
-/**
- * 変数をエクスポート
- */
-async function exportVariables() {
-  // CSS変数としてエクスポート
-  const cssVariables = FigmaVariableService.exportAsCSSVariables();
-  
-  // CSS変数の検証
-  if (cssVariables && Object.keys(cssVariables).length > 0) {
-    figma.notify(`Generated ${Object.keys(cssVariables).length} CSS variables`);
-  } else {
-    figma.notify('Warning: No CSS variables were generated', { error: true });
-  }
-  
-  // Tailwind設定としてエクスポート
-  const tailwindConfig = FigmaVariableService.exportAsTailwindConfig();
-  
-  // Tailwind設定の検証
-  if (tailwindConfig) {
-    // tailwindConfigは文字列ではなくオブジェクトとして扱う
-    const configObj = typeof tailwindConfig === 'string' 
-      ? JSON.parse(tailwindConfig) 
-      : tailwindConfig;
-    
-    const themeKeys = configObj.theme ? Object.keys(configObj.theme).length : 0;
-    figma.notify(`Generated Tailwind config with ${themeKeys} theme properties`);
-  } else {
-    figma.notify('Warning: Tailwind config generation failed', { error: true });
-  }
-  
-  return { cssVariables, tailwindConfig };
 }
