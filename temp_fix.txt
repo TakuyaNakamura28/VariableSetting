@@ -1,0 +1,2 @@
+// プリミティブ変数が見つからない場合のみ直接設定
+logger.info(`Fallback: No matching primitive found for ${colorValue}, setting direct color`);

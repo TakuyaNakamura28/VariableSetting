@@ -3,7 +3,10 @@
  * Figma変数コレクションの管理を担当するクラス
  */
 
-import { CollectionType, VariableMode, ICollectionManager } from '../services/figmaServiceTypes';
+import { CollectionType, VariableMode, ICollectionManager } from './figmaServiceTypes';
+
+// figma.d.tsを参照
+/// <reference path="../types/figma.d.ts" />
 
 /**
  * コレクション名の定義
@@ -362,6 +365,32 @@ export class CollectionManagerService implements ICollectionManager {
     } catch (error) {
       figma.notify(`HEX to RGBA conversion error: ${error}`, { error: true });
       return null;
+    }
+  }
+
+  /**
+   * 変数のパス名を設定する
+   * @param {Variable} variable 変数オブジェクト
+   * @param {string} path 設定するパス
+   */
+  setVariablePathName(variable: Variable, path: string): void {
+    if (!variable) return;
+
+    try {
+      // Figmaのプライベートメソッドを使用するため、明示的なプロパティチェックと型アサーションを使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      const hasSetVariableCodeSyntax = typeof (variable as { setVariableCodeSyntax?: (syntax: string, path: string) => void }).setVariableCodeSyntax === 'function';
+      
+      if (hasSetVariableCodeSyntax) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        (variable as any).setVariableCodeSyntax('WEB', path);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(`Could not set path ${path} for variable ${variable.name}`);
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`Error setting path for variable ${variable.name}: ${error}`);
     }
   }
 

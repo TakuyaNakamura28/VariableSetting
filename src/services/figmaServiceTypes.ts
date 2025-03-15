@@ -39,6 +39,7 @@ export interface ICollectionManager {
   getCollection(collectionType: CollectionType): VariableCollection | null;
   getCollectionNameForVariable(variable: Variable): string | null;
   addToCache(variable: Variable): void;
+  setVariablePathName(variable: Variable, path: string): void;
   clearAllVariables(): void;
 }
 
